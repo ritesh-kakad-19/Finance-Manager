@@ -1,0 +1,26 @@
+.finance-card {
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .income-card {
+    background: #e3fcef;
+  }
+  
+  .expense-card {
+    background: #fce3e3;
+  }
+  
+  .budget-card {
+    background: #e3eafc;
+  }
+  
+  .icon {
+    margin-bottom: 10px;
+  }
+  
+  .table th, .table td {
+    text-align: center;
+  }
+  
