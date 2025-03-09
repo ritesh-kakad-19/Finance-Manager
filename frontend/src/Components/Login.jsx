@@ -15,7 +15,7 @@ const Login = () => {
     e.preventDefault();
     try {
       const { data } = await axios.post('http://localhost:5000/api/users/login', formData);
-      localStorage.setItem('token', data.token);
+      localStorage.setItem("userToken", data.token);
       window.location.href = '/home';
     } catch (error) {
       setMessage(error.response?.data?.message || 'Invalid Credentials');

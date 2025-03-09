@@ -1,102 +1,85 @@
-import React from "react";
-import { Container, Row, Col, Card, Table, ProgressBar, Button } from "react-bootstrap";
-import { FaDollarSign, FaChartLine, FaWallet, FaPlus, FaSignOutAlt } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { Container, Navbar, Button, Nav, Alert, Row, Col, Card, Form } from "react-bootstrap";
+import { FaSignOutAlt, FaMoon, FaSun } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import TransactionTable from "./TransactionTable"; // Import TransactionTable
+import TransactionGraph from "./TransactionGraph"; // Import Graph Component
 import "../styles/Home.css"; // Custom styles
 
 const FinanceHome = () => {
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [darkMode, setDarkMode] = useState(localStorage.getItem("darkMode") === "true");
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    // Clear session (adjust based on authentication method)
-    localStorage.removeItem("userToken"); // Example
-    sessionStorage.clear();
+  useEffect(() => {
+    document.body.className = darkMode ? "dark-mode" : "";
+    localStorage.setItem("darkMode", darkMode);
+  }, [darkMode]);
 
-    // Redirect to login page
-    navigate("/login");
+  const handleLogout = () => {
+    setLoggingOut(true);
+    setTimeout(() => {
+      localStorage.removeItem("userToken");
+      sessionStorage.clear();
+      navigate("/login");
+    }, 1500);
   };
 
-  const transactions = [
-    { id: 1, date: "2025-02-28", description: "Salary", amount: 5000, type: "income" },
-    { id: 2, date: "2025-02-27", description: "Rent", amount: -1200, type: "expense" },
-    { id: 3, date: "2025-02-25", description: "Groceries", amount: -150, type: "expense" },
-  ];
-
-  const totalIncome = transactions.filter(t => t.type === "income").reduce((acc, t) => acc + t.amount, 0);
-  const totalExpense = transactions.filter(t => t.type === "expense").reduce((acc, t) => acc + Math.abs(t.amount), 0);
-  const budgetLimit = 5000;
-  const budgetProgress = (totalExpense / budgetLimit) * 100;
-
   return (
-    <Container className="mt-4">
-      {/* Logout Button */}
-      <div className="d-flex justify-content-end mb-3">
-        <Button variant="danger" onClick={handleLogout}>
-          <FaSignOutAlt /> Logout
-        </Button>
-      </div>
-
-      <Row className="mb-4">
-        <Col md={4}>
-          <Card className="shadow-sm finance-card income-card">
-            <Card.Body>
-              <FaDollarSign size={30} className="icon" />
-              <h5>Total Income</h5>
-              <h3 className="text-success">${totalIncome}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col md={4}>
-          <Card className="shadow-sm finance-card expense-card">
-            <Card.Body>
-              <FaWallet size={30} className="icon" />
-              <h5>Total Expenses</h5>
-              <h3 className="text-danger">${totalExpense}</h3>
-            </Card.Body>
-          </Card>
-        </Col>
-
-        <Col md={4}>
-          <Card className="shadow-sm finance-card budget-card">
-            <Card.Body>
-              <FaChartLine size={30} className="icon" />
-              <h5>Budget Usage</h5>
-              <ProgressBar now={budgetProgress} label={`${Math.round(budgetProgress)}%`} />
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
-      <Card className="shadow-sm">
-        <Card.Body>
-          <h4>Recent Transactions</h4>
-          <Table striped bordered hover className="mt-3">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Description</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.date}</td>
-                  <td>{t.description}</td>
-                  <td className={t.type === "income" ? "text-success" : "text-danger"}>
-                    {t.type === "income" ? "+" : "-"}${Math.abs(t.amount)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-          <Button variant="primary" className="mt-2">
-            <FaPlus /> Add Transaction
+    <div className={darkMode ? "dark-mode" : ""}>
+      {/* Navbar */}
+      <Navbar bg={darkMode ? "dark" : "light"} variant={darkMode ? "dark" : "light"} expand="lg" className="px-3 py-2 shadow">
+        <Navbar.Brand className="fw-bold">💰 Finance Manager</Navbar.Brand>
+        <Nav className="ms-auto d-flex align-items-center">
+          <Form.Check
+            type="switch"
+            id="dark-mode-toggle"
+            label={darkMode ? <FaSun size={20} /> : <FaMoon size={20} />}
+            className="me-3"
+            onChange={() => setDarkMode(!darkMode)}
+            checked={darkMode}
+          />
+          <Button variant="danger" onClick={handleLogout} disabled={loggingOut}>
+            <FaSignOutAlt /> {loggingOut ? "Logging Out..." : "Logout"}
           </Button>
-        </Card.Body>
-      </Card>
-    </Container>
+        </Nav>
+      </Navbar>
+
+      {/* Logout Message */}
+      {loggingOut && <Alert variant="warning" className="text-center mt-3 w-50 mx-auto">Logging out...</Alert>}
+
+      {/* Main Content */}
+      <Container className="mt-4">
+        <Row className="justify-content-center">
+          <Col md={8}>
+            <Card className={`p-4 shadow-sm ${darkMode ? "bg-dark text-white" : "bg-light"}`}>
+              <h2 className="text-center text-primary">Welcome to Finance Manager</h2>
+              <p className="text-center text-primary">
+                Manage your expenses, track income, and analyze financial trends efficiently.
+              </p>
+            </Card>
+          </Col>
+        </Row>
+
+        <Row className="mt-4">
+          {/* Transaction Table */}
+          <Col lg={7} className="mb-4">
+            <Card className={`p-3 shadow-sm ${darkMode ? "bg-dark text-white" : "bg-light"}`}>
+              <h4 className="text-center">💼 Transactions</h4>
+              <TransactionTable />
+            </Card>
+          </Col>
+
+          {/* Graph Section */}
+          <Col lg={5} className="mb-4">
+            <Card className={`p-3 shadow-sm ${darkMode ? "bg-dark text-white" : "bg-light"}`}>
+              <h4 className="text-center">📊 Monthly Overview</h4>
+              <TransactionGraph />
+            </Card>
+          </Col>
+        </Row>
+      </Container>
+    </div>
   );
 };
 
