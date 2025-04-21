@@ -4,6 +4,7 @@ import { FaSignOutAlt, FaMoon, FaSun } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import TransactionTable from "./TransactionTable"; // Import TransactionTable
 import TransactionGraph from "./TransactionGraph"; // Import Graph Component
+import FinanceNavbar from "./FinanceNavbar"; // ✅ Import new Navbar
 import "../styles/Home.css"; // Custom styles
 
 const FinanceHome = () => {
@@ -27,27 +28,21 @@ const FinanceHome = () => {
 
   return (
     <div className={darkMode ? "dark-mode" : ""}>
-      {/* Navbar */}
-      <Navbar bg={darkMode ? "dark" : "light"} variant={darkMode ? "dark" : "light"} expand="lg" className="px-3 py-2 shadow">
-        <Navbar.Brand className="fw-bold">💰 Finance Manager</Navbar.Brand>
-        <Nav className="ms-auto d-flex align-items-center">
-          <Form.Check
-            type="switch"
-            id="dark-mode-toggle"
-            label={darkMode ? <FaSun size={20} /> : <FaMoon size={20} />}
-            className="me-3"
-            onChange={() => setDarkMode(!darkMode)}
-            checked={darkMode}
-          />
-          <Button variant="danger" onClick={handleLogout} disabled={loggingOut}>
-            <FaSignOutAlt /> {loggingOut ? "Logging Out..." : "Logout"}
-          </Button>
-        </Nav>
-      </Navbar>
+       {/* ✅ Use Custom Navbar */}
+       <FinanceNavbar
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        loggingOut={loggingOut}
+        handleLogout={handleLogout}
+      />
 
       {/* Logout Message */}
-      {loggingOut && <Alert variant="warning" className="text-center mt-3 w-50 mx-auto">Logging out...</Alert>}
-
+      {loggingOut && (
+        <Alert variant="warning" className="text-center mt-3 w-50 mx-auto">
+          Logging out...
+        </Alert>
+      )}
+      
       {/* Main Content */}
       <Container className="mt-4">
         <Row className="justify-content-center">
