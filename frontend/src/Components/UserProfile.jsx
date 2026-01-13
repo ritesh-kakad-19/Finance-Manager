@@ -24,7 +24,7 @@ const UserProfile = () => {
             Authorization: `Bearer ${token}`,
           },
         };
-        const { data } = await axios.get("/api/users/profile", config);
+        const { data } = await axios.get("https://finance-manager-91sp.onrender.com/api/users/profile", config);
         setName(data.name);
         setEmail(data.email);
         setLoading(false);
@@ -64,7 +64,7 @@ const UserProfile = () => {
         ...(password && { password }), // send password only if it's entered
       };
 
-      const { data } = await axios.put("/api/users/profile", body, config);
+      const { data } = await axios.put("https://finance-manager-91sp.onrender.com/api/users/profile", body, config);
       setMessage("✅ Profile updated successfully!");
       setLoading(false);
     } catch (error) {
