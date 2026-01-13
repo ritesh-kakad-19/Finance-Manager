@@ -3,7 +3,7 @@ import axios from "axios";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Form } from "react-bootstrap";
 
-const API_URL = "http://localhost:5000/api/transactions";
+const API_URL = "https://finance-manager-91sp.onrender.com/api/transactions";
 
 const TransactionGraph = () => {
   const [transactions, setTransactions] = useState([]);

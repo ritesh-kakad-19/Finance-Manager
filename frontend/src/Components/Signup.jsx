@@ -17,7 +17,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/api/users/register", formData);
+      await axios.post("https://finance-manager-91sp.onrender.com/api/users/register", formData);
       setMessage("✅ Registration Successful! Redirecting to Login...");
       setSuccess(true);
 

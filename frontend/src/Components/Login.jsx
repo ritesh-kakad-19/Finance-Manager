@@ -14,7 +14,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { data } = await axios.post('http://localhost:5000/api/users/login', formData);
+      const { data } = await axios.post('https://finance-manager-91sp.onrender.com/api/users/login', formData);
       localStorage.setItem("userToken", data.token);
       window.location.href = '/home';
     } catch (error) {

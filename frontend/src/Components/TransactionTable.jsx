@@ -3,7 +3,7 @@ import axios from "axios";
 import { Table, Form, Button, Alert } from "react-bootstrap";
 import { FaTrash, FaPlus } from "react-icons/fa";
 
-const API_URL = "http://localhost:5000/api/transactions";
+const API_URL = "https://finance-manager-91sp.onrender.com/api/transactions";
 
 const TransactionTable = () => {
   const [transactions, setTransactions] = useState([]);

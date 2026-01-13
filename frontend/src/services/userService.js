@@ -1,7 +1,7 @@
 // services/userService.js
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/users";
+const API_URL = "https://finance-manager-91sp.onrender.com/api/users";
 
 export const getProfile = async (token) => {
   const res = await axios.get(`${API_URL}/profile`, {
