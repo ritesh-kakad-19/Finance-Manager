@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Form } from "react-bootstrap";
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer,
+  CartesianGrid
+} from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const API_URL = "https://finance-manager-91sp.onrender.com/api/transactions";
+const API_URL = `${import.meta.env.VITE_API_URL}/transactions`;
 
 const TransactionGraph = () => {
   const [transactions, setTransactions] = useState([]);
@@ -26,13 +41,16 @@ const TransactionGraph = () => {
     }
   };
 
-  // Get unique years from transactions
   const getYears = () => {
-    const years = [...new Set(transactions.map((tx) => new Date(tx.date).getFullYear()))];
+    const years = [...new Set(transactions.map((tx) => {
+      if (!tx.date) return new Date().getFullYear();
+      const year = parseInt(tx.date.split("-")[0], 10);
+      return isNaN(year) ? new Date().getFullYear() : year;
+    }))];
+    if (!years.includes(new Date().getFullYear())) years.push(new Date().getFullYear());
     return years.sort((a, b) => b - a);
   };
 
-  // Group transactions by month
   const months = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -40,8 +58,12 @@ const TransactionGraph = () => {
 
   const transactionData = months.map((month) => {
     const monthTransactions = transactions.filter((tx) => {
-      const dateObj = new Date(tx.date);
-      return dateObj.getFullYear() === selectedYear && dateObj.toLocaleString("default", { month: "long" }) === month;
+      if (!tx.date) return false;
+      const parts = tx.date.split("-");
+      const year = parseInt(parts[0], 10);
+      const monthIndex = parseInt(parts[1], 10) - 1; // 0-based
+      const monthName = months[monthIndex];
+      return year === selectedYear && monthName === month;
     });
 
     const totalIncome = monthTransactions
@@ -53,34 +75,72 @@ const TransactionGraph = () => {
       .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
 
     return {
-      month,
+      month: month.substring(0, 3), // Short month names
       Income: totalIncome,
       Expense: totalExpense,
     };
   });
 
   return (
-    <div className="mb-4">
-      {/* Year Selection Dropdown */}
-      <Form.Select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="mb-3 w-25">
-        {getYears().map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </Form.Select>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <div className="w-[120px]">
+          <Select 
+            value={selectedYear.toString()} 
+            onValueChange={(val) => setSelectedYear(Number(val))}
+          >
+            <SelectTrigger className="h-8 bg-background">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {getYears().map((year) => (
+                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-      {/* Bar Chart */}
-      <ResponsiveContainer width="100%" height={400}>
-        <BarChart data={transactionData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
-          <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="Income" fill="#28a745" />
-          <Bar dataKey="Expense" fill="#dc3545" />
-        </BarChart>
-      </ResponsiveContainer>
+      <div className="h-[300px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={transactionData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
+            <XAxis 
+              dataKey="month" 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+            />
+            <YAxis 
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+            />
+            <Tooltip 
+              cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+              contentStyle={{ 
+                backgroundColor: 'hsl(var(--background))', 
+                borderColor: 'hsl(var(--border))',
+                borderRadius: '8px',
+                fontSize: '12px'
+              }}
+            />
+            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
+            <Bar 
+              dataKey="Income" 
+              fill="hsl(var(--primary))" 
+              radius={[4, 4, 0, 0]} 
+              barSize={20}
+            />
+            <Bar 
+              dataKey="Expense" 
+              fill="hsl(var(--destructive))" 
+              radius={[4, 4, 0, 0]} 
+              barSize={20}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

@@ -40,3 +40,21 @@ exports.deleteTransaction = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Update transaction (only if it belongs to the user)
+exports.updateTransaction = async (req, res) => {
+  try {
+    const { date, description, category, amount } = req.body;
+    const transaction = await Transaction.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      { date, description, category, amount },
+      { new: true, runValidators: true }
+    );
+    if (!transaction) return res.status(404).json({ message: "Transaction not found" });
+
+    res.json(transaction);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
