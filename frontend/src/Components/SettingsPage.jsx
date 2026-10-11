@@ -1,73 +1,210 @@
-import React from "react";
-import { Container, Card, Form, Row, Col } from "react-bootstrap";
-import { FaMoon, FaSun, FaLock, FaBell, FaDatabase } from "react-icons/fa";
-import "../styles/Dashboard.css";
+import React, { useState } from "react";
+import axios from "axios";
+import { Bell, Download, Moon, ShieldCheck, Sun, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
+import { useTheme } from "./theme/ThemeProvider";
+import { useToast } from "@/components/ui/toast";
+import { exportTransactionsCsv, getAuthHeaders } from "@/lib/finance";
+import { cn } from "@/lib/utils";
+
+const Toggle = ({ checked, onChange, label }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    onClick={() => onChange(!checked)}
+    className={cn(
+      "relative h-6 w-11 rounded-full transition-colors",
+      checked ? "bg-gradient-to-r from-[#1677FF] to-[#16D9FF]" : "bg-white/10"
+    )}
+  >
+    <span
+      className={cn(
+        "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
+        checked ? "translate-x-5" : "translate-x-0.5"
+      )}
+    />
+  </button>
+);
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
+  const { darkMode, setDarkMode } = useTheme();
+  const { toast } = useToast();
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [budgetReminders, setBudgetReminders] = useState(true);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
+
+  const exportCsv = async () => {
+    try {
+      const token = localStorage.getItem("userToken");
+      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/transactions`, {
+        headers: getAuthHeaders(token),
+      });
+      if (!data.length) {
+        toast("No transactions to export", "error");
+        return;
+      }
+      exportTransactionsCsv(data);
+      toast("CSV exported");
+    } catch (error) {
+      toast("Failed to export CSV", "error");
+    }
+  };
+
+  const clearAllData = async () => {
+    setClearing(true);
+    try {
+      const token = localStorage.getItem("userToken");
+      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/transactions`, {
+        headers: getAuthHeaders(token),
+      });
+      await Promise.all(
+        data.map((tx) =>
+          axios.delete(`${import.meta.env.VITE_API_URL}/transactions/${tx._id}`, {
+            headers: getAuthHeaders(token),
+          })
+        )
+      );
+      setConfirmClear(false);
+      toast("All transaction data cleared");
+    } catch (error) {
+      toast("Failed to clear data", "error");
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const rows = [
+    {
+      group: "SECURITY",
+      items: [
+        {
+          icon: ShieldCheck,
+          title: "Password",
+          description: "Reset your password through the secure recovery flow.",
+          control: (
+            <Button variant="secondary" size="sm" onClick={() => navigate("/forgot-password")}>
+              Change
+            </Button>
+          ),
+        },
+      ],
+    },
+    {
+      group: "PREFERENCES",
+      items: [
+        {
+          icon: Bell,
+          title: "Email Notifications",
+          description: "Receive important updates on this device.",
+          control: (
+            <Toggle
+              checked={emailNotifications}
+              onChange={setEmailNotifications}
+              label="Email notifications"
+            />
+          ),
+        },
+        {
+          icon: Bell,
+          title: "Budget Reminders",
+          description: "Keep a local reminder preference for budgeting.",
+          control: (
+            <Toggle
+              checked={budgetReminders}
+              onChange={setBudgetReminders}
+              label="Budget reminders"
+            />
+          ),
+        },
+        {
+          icon: darkMode ? Moon : Sun,
+          title: "Theme",
+          description: darkMode ? "Dark navy workspace is on." : "Light workspace is on.",
+          control: <Toggle checked={darkMode} onChange={setDarkMode} label="Dark theme" />,
+        },
+      ],
+    },
+    {
+      group: "DATA MANAGEMENT",
+      items: [
+        {
+          icon: Download,
+          title: "Export CSV",
+          description: "Download your actual transaction records.",
+          control: (
+            <Button variant="secondary" size="sm" onClick={exportCsv}>
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          ),
+        },
+        {
+          icon: Trash2,
+          title: "Clear All Data",
+          description: "Permanently delete every transaction from your account.",
+          control: (
+            <Button variant="danger" size="sm" onClick={() => setConfirmClear(true)}>
+              <Trash2 className="h-4 w-4" />
+              Clear
+            </Button>
+          ),
+        },
+      ],
+    },
+  ];
+
   return (
-    <Container fluid>
-      <header className="mb-4">
-        <h2 className="fw-bold">Account Settings</h2>
-        <p className="text-muted">Manage your personal settings and security preferences.</p>
-      </header>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-[30px] font-bold tracking-tight md:text-[34px]">Settings</h1>
+        <p className="mt-1 text-[15px] text-[#A7B1C5]">Manage your account and preferences.</p>
+      </div>
 
-      <Row className="g-4">
-        <Col md={6}>
-          <Card className="glass-panel p-4 border-0">
-            <h5 className="mb-4 d-flex align-items-center">
-              <FaLock className="me-2 text-primary" /> Security
-            </h5>
-            <Form>
-              <Form.Group className="mb-3">
-                <Form.Label>Change Password</Form.Label>
-                <div 
-                  className="p-3 border rounded border-secondary text-primary cursor-pointer"
-                  onClick={() => window.location.href = "/forgot-password"}
-                  style={{ cursor: 'pointer' }}
-                >
-                  Go to Password Reset Page
+      {rows.map((section) => (
+        <div key={section.group} className="space-y-3">
+          <p className="text-xs font-semibold tracking-[0.16em] text-[#6F7B91]">{section.group}</p>
+          <Card className="divide-y divide-white/10 overflow-hidden">
+            {section.items.map((item) => (
+              <div key={item.title} className="flex items-center justify-between gap-4 px-5 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.04] text-[#16D9FF]">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-white">{item.title}</p>
+                    <p className="text-sm text-[#A7B1C5]">{item.description}</p>
+                  </div>
                 </div>
-              </Form.Group>
-            </Form>
+                {item.control}
+              </div>
+            ))}
           </Card>
-        </Col>
+        </div>
+      ))}
 
-        <Col md={6}>
-          <Card className="glass-panel p-4 border-0">
-            <h5 className="mb-4 d-flex align-items-center">
-              <FaBell className="me-2 text-warning" /> Preferences
-            </h5>
-            <Form>
-              <Form.Check 
-                type="switch"
-                id="email-alerts"
-                label="Receive Email Notifications"
-                className="mb-3"
-              />
-              <Form.Check 
-                type="switch"
-                id="budget-reminders"
-                label="Enable Budget Reminders"
-                className="mb-3"
-              />
-            </Form>
-          </Card>
-        </Col>
-
-        <Col md={12}>
-          <Card className="glass-panel p-4 border-0">
-            <h5 className="mb-4 d-flex align-items-center">
-              <FaDatabase className="me-2 text-info" /> Data Management
-            </h5>
-            <p className="text-muted">Export or Wipe your financial data permanently.</p>
-            <div className="d-flex gap-2">
-              <button className="btn btn-outline-primary">Export CSV</button>
-              <button className="btn btn-outline-danger">Clear All Data</button>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+      <Modal
+        open={confirmClear}
+        onClose={() => setConfirmClear(false)}
+        title="Clear all data?"
+        description="This will delete every transaction using the existing API. This cannot be undone."
+      >
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={() => setConfirmClear(false)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={clearAllData} disabled={clearing}>
+            {clearing ? "Clearing..." : "Delete everything"}
+          </Button>
+        </div>
+      </Modal>
+    </div>
   );
 };
 

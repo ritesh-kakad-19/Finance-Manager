@@ -1,154 +1,130 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Button, Row, Col, Navbar, Nav, Form } from "react-bootstrap";
-import { FaChartLine, FaWallet, FaLock, FaEnvelope } from "react-icons/fa";
-import "../styles/LandingPage.css";
+import { ArrowRight, ChartNoAxesCombined, ShieldCheck, Wallet } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Logo from "./brand/Logo";
 
 const LandingPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="landing-container" data-bs-theme="dark">
-      {/* Background Overlay */}
-      <div className="landing-overlay"></div>
+    <div className="app-atmosphere min-h-screen text-[var(--text-primary)]">
+      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[var(--border-primary)] bg-[var(--bg-header)] px-6 backdrop-blur-xl">
+        <Logo />
+        <nav className="hidden items-center gap-6 text-sm font-medium text-[#A7B1C5] md:flex">
+          <a href="#home" className="hover:text-white">Home</a>
+          <a href="#features" className="hover:text-white">Features</a>
+          <a href="#about" className="hover:text-white">About</a>
+          <a href="#contact" className="hover:text-white">Contact</a>
+        </nav>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={() => navigate("/login")}>Login</Button>
+          <Button variant="primary" onClick={() => navigate("/signup")}>Register</Button>
+        </div>
+      </header>
 
-      {/* Sticky Navbar */}
-      <Navbar expand="lg" fixed="top" bg="dark" variant="dark" className="glass-navbar px-4" data-bs-theme="dark">
-        <Navbar.Brand href="#home" className="fw-bold hero-logo">
-          Finance Manager
-        </Navbar.Brand>
-        <Navbar.Toggle aria-controls="landing-navbar" />
-        <Navbar.Collapse id="landing-navbar">
-          <Nav className="mx-auto nav-links">
-            <Nav.Link href="#home">Home</Nav.Link>
-            <Nav.Link href="#features">Features</Nav.Link>
-            <Nav.Link href="#about">About</Nav.Link>
-            <Nav.Link href="#contact">Contact</Nav.Link>
-          </Nav>
-          <Nav>
-            <Button variant="outline-light" className="btn-glass px-4 mx-2" onClick={() => navigate("/login")}>
-              Login
+      <section id="home" className="page-enter mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2">
+        <div>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-[#16D9FF]">
+            Premium personal finance
+          </div>
+          <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+            Master Your Financial Future
+          </h1>
+          <p className="mt-5 max-w-xl text-base text-[#A7B1C5] sm:text-lg">
+            Track expenses, understand spending patterns, and take control of your financial life.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button variant="primary" size="lg" onClick={() => navigate("/signup")}>
+              Start Free
+              <ArrowRight className="h-4 w-4" />
             </Button>
-            <Button variant="primary" className="btn-glow px-4" onClick={() => navigate("/signup")}>
-              Register
+            <Button variant="secondary" size="lg" onClick={() => document.getElementById("features")?.scrollIntoView({ behavior: "smooth" })}>
+              Explore Features
             </Button>
-          </Nav>
-        </Navbar.Collapse>
-      </Navbar>
+          </div>
+        </div>
 
-      {/* Content Container */}
-      <div className="landing-content">
-
-        {/* HERO SECTION */}
-        <section id="home" className="d-flex flex-column justify-content-center align-items-center min-vh-100 text-center">
-          <Container>
-            <div className="glass-card mx-auto">
-              <h1 className="hero-title">Master Your <span className="highlight">Financial Future</span></h1>
-              <p className="hero-subtitle">
-                Track expenses, analyze trends, and achieve your goals with our premium, modern dashboard.
-              </p>
-              <div className="hero-buttons mt-4">
-                <Button variant="primary" className="btn-glow px-4 py-2 mx-2" onClick={() => navigate("/signup")}>
-                  Start Free
-                </Button>
+        <div className="glass-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm font-medium text-[#A7B1C5]">Dashboard preview</p>
+            <span className="rounded-full bg-[#1677FF]/15 px-2 py-0.5 text-[11px] text-[#16D9FF]">Financely</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {["Balance", "Income", "Expenses", "Savings"].map((label, index) => (
+              <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="text-xs text-[#6F7B91]">{label}</p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#1677FF] to-[#16D9FF]"
+                    style={{ width: `${55 + index * 10}%` }}
+                  />
+                </div>
               </div>
+            ))}
+          </div>
+          <div className="mt-4 h-36 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex h-full items-end gap-2">
+              {[40, 62, 48, 78, 55, 70, 46, 84].map((height, index) => (
+                <div key={index} className="flex-1 rounded-t-md bg-gradient-to-t from-[#1677FF]/20 to-[#16D9FF]/80" style={{ height: `${height}%` }} />
+              ))}
             </div>
-          </Container>
-        </section>
+          </div>
+        </div>
+      </section>
 
-        {/* FEATURES SECTION */}
-        <section id="features" className="py-5 section-dark">
-          <Container>
-            <h2 className="section-title text-center mb-5">What We <span className="highlight">Offer</span></h2>
-            <Row className="g-4">
-              <Col md={4}>
-                <div className="feature-card glass-card text-center p-4">
-                  <FaChartLine size={50} className="mb-3 feature-icon" />
-                  <h4>Visual Analytics</h4>
-                  <p className="text-muted mt-2">Interactive graphs tracking your income and expenses over time.</p>
-                </div>
-              </Col>
-              <Col md={4}>
-                <div className="feature-card glass-card text-center p-4">
-                  <FaWallet size={50} className="mb-3 feature-icon" />
-                  <h4>Smart Tracking</h4>
-                  <p className="text-muted mt-2">Automatically categorize transactions to see where your money goes.</p>
-                </div>
-              </Col>
-              <Col md={4}>
-                <div className="feature-card glass-card text-center p-4">
-                  <FaLock size={50} className="mb-3 feature-icon" />
-                  <h4>Secure Data</h4>
-                  <p className="text-muted mt-2">Your data is encrypted with enterprise-grade security standards.</p>
-                </div>
-              </Col>
-            </Row>
-          </Container>
-        </section>
+      <section id="features" className="mx-auto max-w-6xl border-t border-white/10 px-6 py-16">
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl font-bold">Built for financial clarity</h2>
+          <p className="mt-2 text-sm text-[#A7B1C5]">The same dark workspace you use after you sign in.</p>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {[
+            { icon: ChartNoAxesCombined, title: "Visual Analytics", copy: "See income and expenses over time with clean charts." },
+            { icon: Wallet, title: "Smart Tracking", copy: "Add, edit, and filter every transaction in one place." },
+            { icon: ShieldCheck, title: "Secure Access", copy: "JWT-protected routes keep your workspace private." },
+          ].map((feature) => (
+            <div key={feature.title} className="glass-card glass-card-hover p-6">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#1677FF]/10 text-[#16D9FF]">
+                <feature.icon className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-semibold">{feature.title}</h3>
+              <p className="mt-2 text-sm text-[#A7B1C5]">{feature.copy}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        {/* ABOUT SECTION */}
-        <section id="about" className="py-5">
-          <Container className="glass-card p-5 my-5">
-            <Row className="align-items-center">
-              <Col lg={6}>
-                <h2 className="section-title mb-4">About <span className="highlight">Us</span></h2>
-                <p className="about-text">
-                  Finance Manager was built to give individuals control over their financial destiny.
-                  We believe that understanding your money should not be complicated or require a degree in accounting.
-                </p>
-                <p className="about-text">
-                  With a sleek interface, robust functionality, and actionable insights, our application is designed to help you save more, spend smartly, and achieve total financial freedom.
-                </p>
-              </Col>
-              <Col lg={6} className="text-center mt-4 mt-lg-0">
-                <div className="about-image-placeholder">
-                  <div className="glass-circle animate-pulse"></div>
-                  <div className="glass-circle small delay-1"></div>
-                  <div className="glass-circle medium delay-2"></div>
-                </div>
-              </Col>
-            </Row>
-          </Container>
-        </section>
+      <section id="about" className="mx-auto max-w-5xl px-6 py-16">
+        <div className="glass-card p-8">
+          <h2 className="mb-4 text-2xl font-bold">About Financely</h2>
+          <p className="text-sm leading-relaxed text-[#A7B1C5]">
+            Financely is a personal finance workspace for tracking income, expenses, and trends without noise.
+            Sign in to use your real data — this landing page is the same product, not a different theme.
+          </p>
+        </div>
+      </section>
 
-        {/* CONTACT SECTION */}
-        <section id="contact" className="py-5 section-dark mb-5">
-          <Container>
-            <h2 className="section-title text-center mb-5">Get in <span className="highlight">Touch</span></h2>
-            <Row className="justify-content-center">
-              <Col md={8} lg={6}>
-                <div className="glass-card p-4">
-                  <Form>
-                    <Form.Group className="mb-4" controlId="contactName">
-                      <Form.Label>Name</Form.Label>
-                      <Form.Control type="text" placeholder="John Doe" className="glass-input" />
-                    </Form.Group>
-                    <Form.Group className="mb-4" controlId="contactEmail">
-                      <Form.Label>Email address</Form.Label>
-                      <Form.Control type="email" placeholder="john@example.com" className="glass-input" />
-                    </Form.Group>
-                    <Form.Group className="mb-4" controlId="contactMessage">
-                      <Form.Label>Message</Form.Label>
-                      <Form.Control as="textarea" rows={4} placeholder="How can we help?" className="glass-input" />
-                    </Form.Group>
-                    <Button variant="primary" className="btn-glow w-100 py-2 d-flex justify-content-center align-items-center" onClick={(e) => e.preventDefault()}>
-                      <FaEnvelope className="me-2" /> Send Message
-                    </Button>
-                  </Form>
-                </div>
-              </Col>
-            </Row>
-          </Container>
-        </section>
+      <section id="contact" className="mx-auto max-w-xl px-6 pb-20">
+        <div className="glass-card p-8">
+          <h2 className="mb-6 text-center text-xl font-bold">Get in Touch</h2>
+          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <Input placeholder="Name" />
+            <Input type="email" placeholder="Email address" />
+            <textarea
+              rows={3}
+              placeholder="How can we help?"
+              className="w-full rounded-xl border border-[var(--border-primary)] bg-[var(--bg-input)] p-3 text-sm text-white placeholder-[#6F7B91] focus:border-[#1677FF] focus:outline-none"
+            />
+            <Button variant="primary" className="w-full">Send Message</Button>
+          </form>
+        </div>
+      </section>
 
-        {/* FOOTER */}
-        <footer className="footer-glass py-4 text-center">
-          <Container>
-            <p className="mb-0 text-muted">© {new Date().getFullYear()} Finance Manager. All rights reserved.</p>
-          </Container>
-        </footer>
-
-      </div>
+      <footer className="border-t border-white/10 py-6 text-center text-xs text-[#6F7B91]">
+        © {new Date().getFullYear()} Financely. All rights reserved.
+      </footer>
     </div>
   );
 };

@@ -1,77 +1,87 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  ArrowLeftRight, 
-  PieChart, 
-  UserCircle, 
-  Settings, 
+import { NavLink, useLocation } from "react-router-dom";
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  ChartNoAxesCombined,
+  CircleUserRound,
+  Settings,
   LogOut,
-  Wallet,
-  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import Logo from "./brand/Logo";
 
-const Sidebar = ({ handleLogout, loggingOut }) => {
+const Sidebar = ({ handleLogout, loggingOut, mobileOpen, setMobileOpen }) => {
+  const location = useLocation();
   const navItems = [
-    { path: "/dashboard", icon: LayoutDashboard, text: "Dashboard" },
+    { path: "/dashboard", icon: LayoutDashboard, text: "Dashboard", match: ["/dashboard", "/home"] },
     { path: "/transactions", icon: ArrowLeftRight, text: "Transactions" },
-    { path: "/analytics", icon: PieChart, text: "Analytics" },
-    { path: "/profile", icon: UserCircle, text: "Profile" },
+    { path: "/analytics", icon: ChartNoAxesCombined, text: "Analytics" },
+    { path: "/profile", icon: CircleUserRound, text: "Profile" },
     { path: "/settings", icon: Settings, text: "Settings" },
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r bg-background transition-transform">
-      <div className="flex h-full flex-col px-3 py-4">
-        {/* Logo Section */}
-        <div className="mb-8 flex items-center gap-2 px-4 py-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-            <Wallet className="h-6 w-6" />
+    <>
+      {mobileOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          aria-label="Close sidebar"
+          onClick={() => setMobileOpen && setMobileOpen(false)}
+        />
+      )}
+
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 h-screen w-[260px] border-r border-[var(--border-primary)] bg-[var(--bg-sidebar)] backdrop-blur-xl transition-transform duration-300 md:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
+        <div className="flex h-full flex-col px-4 py-5">
+          <div className="mb-8 px-2 py-1">
+            <Logo />
           </div>
-          <span className="text-xl font-bold tracking-tight">Financely</span>
-        </div>
 
-        {/* Navigation Items */}
-        <nav className="flex-1 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => 
-                cn(
-                  "group flex items-center justify-between rounded-lg px-4 py-2.5 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
-                  isActive ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground"
-                )
-              }
-            >
-              <div className="flex items-center gap-3">
-                <item.icon className={cn("h-5 w-5 transition-colors", "group-hover:text-primary")} />
-                <span>{item.text}</span>
-              </div>
-              <ChevronRight className="h-4 w-4 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-            </NavLink>
-          ))}
-        </nav>
+          <nav className="flex-1 space-y-1">
+            {navItems.map((item) => {
+              const isActive = item.match
+                ? item.match.includes(location.pathname)
+                : location.pathname === item.path;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setMobileOpen && setMobileOpen(false)}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-[10px] px-3.5 py-3 text-sm font-medium transition-all duration-200",
+                    isActive
+                      ? "bg-[rgba(22,119,255,0.12)] text-white before:absolute before:bottom-1.5 before:left-0 before:top-1.5 before:w-[3px] before:rounded-r-full before:bg-gradient-to-b before:from-[#1677FF] before:to-[#16D9FF]"
+                      : "text-[#A7B1C5] hover:bg-white/[0.04] hover:text-white"
+                  )}
+                >
+                  <item.icon
+                    className={cn("h-5 w-5 transition-colors", isActive ? "text-[#16D9FF]" : "text-[#6F7B91]")}
+                  />
+                  <span>{item.text}</span>
+                </NavLink>
+              );
+            })}
+          </nav>
 
-        <Separator className="my-4" />
+          <div className="my-4 h-px w-full bg-[var(--border-primary)]" />
 
-        {/* Footer / Logout */}
-        <div className="mt-auto pt-4">
-          <Button 
-            variant="ghost" 
-            className="w-100 justify-start gap-3 rounded-lg px-4 py-6 text-muted-foreground transition-all hover:bg-destructive/10 hover:text-destructive"
+          <button
             onClick={handleLogout}
             disabled={loggingOut}
+            className="flex w-full items-center gap-3 rounded-[10px] px-3.5 py-3 text-sm font-medium text-[#A7B1C5] transition-all duration-200 hover:bg-[#FF4545]/10 hover:text-[#FF4545] disabled:opacity-50"
           >
             <LogOut className="h-5 w-5" />
-            <span className="font-medium">{loggingOut ? "Logging Out..." : "Logout"}</span>
-          </Button>
+            <span>{loggingOut ? "Logging Out..." : "Logout"}</span>
+          </button>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 

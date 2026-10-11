@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  Legend, 
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
   ResponsiveContainer,
-  CartesianGrid
+  Tooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 import {
   Select,
@@ -17,129 +19,180 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getAuthHeaders, MONTHS, parseTxDate } from "@/lib/finance";
 
 const API_URL = `${import.meta.env.VITE_API_URL}/transactions`;
 
-const TransactionGraph = () => {
-  const [transactions, setTransactions] = useState([]);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+const chartTooltipStyle = {
+  backgroundColor: "rgba(10, 20, 38, 0.95)",
+  borderColor: "rgba(255, 255, 255, 0.10)",
+  borderRadius: "12px",
+  color: "#FFFFFF",
+  fontSize: "12px",
+};
 
-  const token = localStorage.getItem("userToken");
+const toChartAmount = (value) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const TransactionGraph = ({
+  transactions: externalTransactions,
+  selectedYear: controlledYear,
+  onYearChange,
+  view = "monthly",
+  chartType = "area",
+  height = 300,
+  showYearSelect = true,
+}) => {
+  const [internalTransactions, setInternalTransactions] = useState([]);
+  const [internalYear, setInternalYear] = useState(new Date().getFullYear());
+  const transactions = Array.isArray(externalTransactions)
+    ? externalTransactions
+    : Array.isArray(internalTransactions)
+      ? internalTransactions
+      : [];
+  const selectedYear = controlledYear ?? internalYear;
 
   useEffect(() => {
-    fetchTransactions();
-  }, []);
+    if (externalTransactions) return undefined;
+    const token = localStorage.getItem("userToken");
+    axios
+      .get(API_URL, { headers: getAuthHeaders(token) })
+      .then(({ data }) => setInternalTransactions(data))
+      .catch((error) => console.error("Error fetching transactions", error));
+  }, [externalTransactions]);
 
-  const fetchTransactions = async () => {
-    try {
-      const { data } = await axios.get(API_URL, {
-        headers: { Authorization: token },
+  const years = useMemo(() => {
+    const values = [
+      ...new Set(
+        transactions.map((tx) => {
+          const date = parseTxDate(tx.date);
+          return date ? date.getFullYear() : new Date().getFullYear();
+        })
+      ),
+    ];
+    if (!values.includes(new Date().getFullYear())) values.push(new Date().getFullYear());
+    return values.sort((a, b) => b - a);
+  }, [transactions]);
+
+  const chartData = useMemo(() => {
+    if (view === "weekly") {
+      const today = new Date();
+      return Array.from({ length: 7 }, (_, index) => {
+        const day = new Date(today);
+        day.setDate(today.getDate() - (6 - index));
+        const dayTransactions = transactions.filter((tx) => {
+          const date = parseTxDate(tx.date);
+          if (!date) return false;
+          return (
+            date.getFullYear() === day.getFullYear() &&
+            date.getMonth() === day.getMonth() &&
+            date.getDate() === day.getDate()
+          );
+        });
+        return {
+          label: day.toLocaleDateString(undefined, { weekday: "short" }),
+          Income: dayTransactions
+            .filter((tx) => tx.category === "Income")
+            .reduce((sum, tx) => sum + toChartAmount(tx.amount), 0),
+          Expense: dayTransactions
+            .filter((tx) => tx.category === "Expense")
+            .reduce((sum, tx) => sum + toChartAmount(tx.amount), 0),
+        };
       });
-      setTransactions(data);
-    } catch (error) {
-      console.error("Error fetching transactions", error);
     }
-  };
 
-  const getYears = () => {
-    const years = [...new Set(transactions.map((tx) => {
-      if (!tx.date) return new Date().getFullYear();
-      const year = parseInt(tx.date.split("-")[0], 10);
-      return isNaN(year) ? new Date().getFullYear() : year;
-    }))];
-    if (!years.includes(new Date().getFullYear())) years.push(new Date().getFullYear());
-    return years.sort((a, b) => b - a);
-  };
-
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
-  const transactionData = months.map((month) => {
-    const monthTransactions = transactions.filter((tx) => {
-      if (!tx.date) return false;
-      const parts = tx.date.split("-");
-      const year = parseInt(parts[0], 10);
-      const monthIndex = parseInt(parts[1], 10) - 1; // 0-based
-      const monthName = months[monthIndex];
-      return year === selectedYear && monthName === month;
+    return MONTHS.map((month) => {
+      const monthTransactions = transactions.filter((tx) => {
+        const date = parseTxDate(tx.date);
+        if (!date) return false;
+        return date.getFullYear() === selectedYear && MONTHS[date.getMonth()] === month;
+      });
+      return {
+        label: month.substring(0, 3),
+        Income: monthTransactions
+          .filter((tx) => tx.category === "Income")
+          .reduce((sum, tx) => sum + toChartAmount(tx.amount), 0),
+        Expense: monthTransactions
+          .filter((tx) => tx.category === "Expense")
+          .reduce((sum, tx) => sum + toChartAmount(tx.amount), 0),
+      };
     });
+  }, [transactions, selectedYear, view]);
 
-    const totalIncome = monthTransactions
-      .filter((tx) => tx.category === "Income")
-      .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+  const hasChartData = chartData.some((item) => item.Income > 0 || item.Expense > 0);
 
-    const totalExpense = monthTransactions
-      .filter((tx) => tx.category === "Expense")
-      .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+  const setYear = (year) => {
+    if (onYearChange) onYearChange(year);
+    else setInternalYear(year);
+  };
 
-    return {
-      month: month.substring(0, 3), // Short month names
-      Income: totalIncome,
-      Expense: totalExpense,
-    };
-  });
+  const ChartComponent = chartType === "bar" ? BarChart : AreaChart;
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <div className="w-[120px]">
-          <Select 
-            value={selectedYear.toString()} 
-            onValueChange={(val) => setSelectedYear(Number(val))}
-          >
-            <SelectTrigger className="h-8 bg-background">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {getYears().map((year) => (
-                <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {showYearSelect && view === "monthly" ? (
+        <div className="flex justify-end">
+          <div className="w-[130px]">
+            <Select value={selectedYear.toString()} onValueChange={(val) => setYear(Number(val))}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
+      ) : null}
 
-      <div className="h-[300px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={transactionData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted))" />
-            <XAxis 
-              dataKey="month" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-            />
-            <YAxis 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
-            />
-            <Tooltip 
-              cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--background))', 
-                borderColor: 'hsl(var(--border))',
-                borderRadius: '8px',
-                fontSize: '12px'
-              }}
-            />
-            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px', fontSize: '12px' }} />
-            <Bar 
-              dataKey="Income" 
-              fill="hsl(var(--primary))" 
-              radius={[4, 4, 0, 0]} 
-              barSize={20}
-            />
-            <Bar 
-              dataKey="Expense" 
-              fill="hsl(var(--destructive))" 
-              radius={[4, 4, 0, 0]} 
-              barSize={20}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="w-full" style={{ minHeight: height }}>
+        {hasChartData ? (
+          <ResponsiveContainer width="100%" height={height} minWidth={0}>
+            <ChartComponent data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="incomeFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#16D9FF" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="#16D9FF" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="expenseFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#FF4545" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#FF4545" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.08)" />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#A7B1C5", fontSize: 12 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#A7B1C5", fontSize: 12 }} />
+              <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={chartTooltipStyle} />
+              <Legend
+                verticalAlign="top"
+                align="right"
+                iconType="circle"
+                wrapperStyle={{ paddingBottom: "16px", fontSize: "12px", color: "#A7B1C5" }}
+              />
+              {chartType === "bar" ? (
+                <>
+                  <Bar dataKey="Income" fill="#16D9FF" radius={[4, 4, 0, 0]} barSize={16} />
+                  <Bar dataKey="Expense" fill="#FF4545" radius={[4, 4, 0, 0]} barSize={16} />
+                </>
+              ) : (
+                <>
+                  <Area type="monotone" dataKey="Income" stroke="#16D9FF" fill="url(#incomeFill)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="Expense" stroke="#FF4545" fill="url(#expenseFill)" strokeWidth={2} />
+                </>
+              )}
+            </ChartComponent>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full min-h-[220px] items-center justify-center rounded-xl border border-dashed border-white/10 px-6 text-center text-sm text-[#6F7B91]">
+            No income or expenses were recorded for {view === "weekly" ? "the past seven days" : selectedYear}.
+          </div>
+        )}
       </div>
     </div>
   );

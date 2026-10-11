@@ -1,7 +1,7 @@
   /* 🌗 Light Mode (Default) */
 body {
   background-color: #f8f9fa;
-  color: #212529;
+  color: #000000;
   transition: background-color 0.5s ease, color 0.3s ease;
 }
 
@@ -39,7 +39,7 @@ body {
 /* 🌙 Dark Mode */
 .dark-mode {
   background-color: #121212 !important;
-  color: #ffffff !important;
+  color: #f4eded !important;
 }
 
 .dark-mode .navbar {

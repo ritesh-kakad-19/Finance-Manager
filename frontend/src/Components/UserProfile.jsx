@@ -1,149 +1,128 @@
 import React, { useEffect, useState } from "react";
-import { Container, Row, Col, Card, Form, Button, Alert, Image, Spinner } from "react-bootstrap";
 import axios from "axios";
-import { FaUserCircle } from "react-icons/fa";
+import { CircleUserRound, Loader2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
+import { getAuthHeaders } from "@/lib/finance";
 
 const UserProfile = () => {
-  const [profilePic, setProfilePic] = useState(null);
   const [previewPic, setPreviewPic] = useState(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
   const token = localStorage.getItem("userToken");
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        setLoading(true);
-        const config = {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        };
-        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/users/profile`, config);
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/users/profile`, {
+          headers: getAuthHeaders(token),
+        });
         setName(data.name);
         setEmail(data.email);
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching profile:", error);
-        setMessage("Failed to fetch profile.");
+        toast("Failed to fetch profile", "error");
+      } finally {
         setLoading(false);
       }
     };
-
     fetchProfile();
-  }, [token]);
+  }, [token, toast]);
 
   const handlePicChange = (e) => {
     const file = e.target.files[0];
-    setProfilePic(file);
-    setPreviewPic(URL.createObjectURL(file));
+    if (file) setPreviewPic(URL.createObjectURL(file));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    e.preventDefault();
     if (password && password !== confirmPassword) {
-      setMessage("Passwords do not match!");
+      toast("Passwords do not match", "error");
       return;
     }
-
     try {
-      setLoading(true);
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      };
-
-      const body = {
-        name,
-        ...(password && { password }), // send password only if it's entered
-      };
-
-      const { data } = await axios.put(`${import.meta.env.VITE_API_URL}/users/profile`, body, config);
-      setMessage("✅ Profile updated successfully!");
-      setLoading(false);
+      setSaving(true);
+      await axios.put(
+        `${import.meta.env.VITE_API_URL}/users/profile`,
+        { name, ...(password && { password }) },
+        { headers: { "Content-Type": "application/json", ...getAuthHeaders(token) } }
+      );
+      setPassword("");
+      setConfirmPassword("");
+      toast("Profile updated");
     } catch (error) {
-      setMessage("Error updating profile.");
-      setLoading(false);
+      toast("Error updating profile", "error");
+    } finally {
+      setSaving(false);
     }
   };
 
-  return (
-    <Container className="mt-4">
-      <Row className="justify-content-center">
-        <Col md={8}>
-          <Card className="p-4 shadow-sm">
-            <h3 className="text-center text-primary mb-3">👤 User Profile</h3>
+  if (loading) {
+    return <Skeleton className="mx-auto h-[480px] max-w-2xl" />;
+  }
 
-            {message && <Alert variant={message.includes("✅") ? "success" : "danger"}>{message}</Alert>}
-            {loading && (
-              <div className="text-center mb-3">
-                <Spinner animation="border" />
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-[30px] font-bold tracking-tight md:text-[34px]">Profile</h1>
+        <p className="mt-1 text-[15px] text-[#A7B1C5]">Manage your personal information.</p>
+      </div>
+
+      <Card className="mx-auto max-w-2xl p-6">
+        <CardHeader className="p-0 pb-6 text-center">
+          <CardTitle>User Profile</CardTitle>
+          <CardDescription>Update your account details and password.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 p-0">
+          <div className="flex flex-col items-center space-y-3">
+            {previewPic ? (
+              <img src={previewPic} alt="Profile preview" className="h-24 w-24 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-[var(--bg-input)]">
+                <CircleUserRound className="h-12 w-12 text-[#A7B1C5]" />
               </div>
             )}
+            <p className="text-base font-semibold">{name}</p>
+            <p className="text-sm text-[#A7B1C5]">{email}</p>
+            <label className="cursor-pointer text-xs font-medium text-[#16D9FF]">
+              Change Picture
+              <input type="file" onChange={handlePicChange} className="hidden" accept="image/*" />
+            </label>
+          </div>
 
-            <div className="text-center mb-4">
-              {previewPic ? (
-                <Image src={previewPic} roundedCircle width={100} height={100} />
-              ) : (
-                <FaUserCircle size={100} className="text-secondary" />
-              )}
-              <Form.Group controlId="formFile" className="mt-2">
-                <Form.Control type="file" onChange={handlePicChange} />
-              </Form.Group>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[#A7B1C5]">Full Name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-
-            <Form>
-              <Form.Group className="mb-3" controlId="name">
-                <Form.Label>Full Name</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="Enter your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3" controlId="email">
-                <Form.Label>Email address</Form.Label>
-                <Form.Control type="email" value={email} disabled />
-              </Form.Group>
-
-              <Form.Group className="mb-3" controlId="password">
-                <Form.Label>New Password</Form.Label>
-                <Form.Control
-                  type="password"
-                  placeholder="Enter new password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3" controlId="confirmPassword">
-                <Form.Label>Confirm New Password</Form.Label>
-                <Form.Control
-                  type="password"
-                  placeholder="Re-enter password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </Form.Group>
-
-              <div className="text-center">
-                <Button variant="primary" onClick={handleSave} disabled={loading}>
-                  Save Changes
-                </Button>
-              </div>
-            </Form>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[#A7B1C5]">Email</label>
+              <Input value={email} disabled className="cursor-not-allowed opacity-70" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[#A7B1C5]">New Password</label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter new password" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[#A7B1C5]">Confirm Password</label>
+              <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter password" />
+            </div>
+            <Button variant="primary" type="submit" disabled={saving} className="w-full">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save Changes
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

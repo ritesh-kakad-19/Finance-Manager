@@ -1,13 +1,7 @@
-import React from "react";
-import { 
-  LogOut, 
-  Moon, 
-  Sun, 
-  UserCircle, 
-  Bell
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Bell, CircleUserRound, LogOut, Menu, Moon, Settings, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import axios from "axios";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,63 +10,119 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getAuthHeaders } from "@/lib/finance";
+import Logo from "./brand/Logo";
 
-const FinanceNavbar = ({ darkMode, setDarkMode, loggingOut, handleLogout }) => {
+const FinanceNavbar = ({ darkMode, setDarkMode, loggingOut, handleLogout, setMobileOpen }) => {
   const navigate = useNavigate();
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("userToken");
+    if (!token) return;
+    axios
+      .get(`${import.meta.env.VITE_API_URL}/users/profile`, {
+        headers: getAuthHeaders(token),
+      })
+      .then(({ data }) => setUserName(data.name || ""))
+      .catch(() => {});
+  }, []);
+
+  const initials = userName
+    ? userName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0].toUpperCase())
+        .join("")
+    : "";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur">
-      <div className="flex flex-1 items-center gap-4">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-[var(--border-primary)] bg-[var(--bg-header)] px-4 backdrop-blur-xl md:px-8">
+      <div className="flex items-center gap-3 md:hidden">
+        <button
+          onClick={() => setMobileOpen && setMobileOpen((prev) => !prev)}
+          className="icon-btn"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <Logo size="sm" />
       </div>
 
-      <div className="flex items-center gap-4">
-        {/* Dark Mode Toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
+      <div className="hidden flex-1 md:block" />
+
+      <div className="flex items-center gap-2.5">
+        <button
           onClick={() => setDarkMode(!darkMode)}
-          className="h-9 w-9 rounded-full"
+          className="icon-btn"
+          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
         >
-          {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-        </Button>
+          {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
 
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full">
-          <Bell className="h-5 w-5" />
-        </Button>
-
-        {/* User Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              <Avatar className="h-9 w-9">
-                <AvatarImage src="" alt="User" />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  <UserCircle className="h-6 w-6" />
+            <button className="icon-btn relative" aria-label="Notifications" title="Notifications">
+              <Bell className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-72 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card-solid)] p-1 text-[var(--text-primary)] shadow-xl"
+          >
+            <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold text-[#A7B1C5]">
+              Notifications
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-[var(--border-primary)]" />
+            <div className="px-3 py-6 text-center text-sm text-[#6F7B91]">
+              You&apos;re all caught up.
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="icon-btn" aria-label="Open profile menu">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-transparent text-xs font-semibold text-[#A7B1C5]">
+                  {initials || <CircleUserRound className="h-5 w-5" />}
                 </AvatarFallback>
               </Avatar>
-            </Button>
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate("/profile")}>
-              <UserCircle className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/settings")}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={handleLogout} 
-              disabled={loggingOut}
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+          <DropdownMenuContent
+            align="end"
+            className="w-56 rounded-2xl border border-[var(--border-primary)] bg-[var(--bg-card-solid)] p-1 text-[var(--text-primary)] shadow-xl"
+          >
+            <DropdownMenuLabel className="px-3 py-2 text-xs font-semibold text-[#A7B1C5]">
+              {userName || "My Account"}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-[var(--border-primary)]" />
+            <DropdownMenuItem
+              onClick={() => navigate("/profile")}
+              className="cursor-pointer rounded-lg px-3 py-2 text-sm focus:bg-white/[0.04]"
             >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>{loggingOut ? "Logging Out..." : "Logout"}</span>
+              <CircleUserRound className="h-4 w-4 text-[#16D9FF]" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => navigate("/settings")}
+              className="cursor-pointer rounded-lg px-3 py-2 text-sm focus:bg-white/[0.04]"
+            >
+              <Settings className="h-4 w-4 text-[#16D9FF]" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-[var(--border-primary)]" />
+            <DropdownMenuItem
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="cursor-pointer rounded-lg px-3 py-2 text-sm text-[#FF4545] focus:bg-[#FF4545]/10"
+            >
+              <LogOut className="h-4 w-4" />
+              {loggingOut ? "Logging Out..." : "Logout"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -80,24 +130,5 @@ const FinanceNavbar = ({ darkMode, setDarkMode, loggingOut, handleLogout }) => {
     </header>
   );
 };
-
-// Internal Settings icon if not imported
-const Settings = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
 
 export default FinanceNavbar;

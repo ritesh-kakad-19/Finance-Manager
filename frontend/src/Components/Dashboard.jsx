@@ -1,218 +1,364 @@
-import React, { useState, useEffect } from "react";
-import TransactionTable from "./TransactionTable";
-import TransactionGraph from "./TransactionGraph";
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
-  TrendingUp,
-  TrendingDown,
-  Plus,
-  Filter,
-  Download
-} from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  PiggyBank,
+  Plus,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
+import TransactionGraph from "./TransactionGraph";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import {
+  formatMoney,
+  formatSignedMoney,
+  formatShortDate,
+  getDefaultTransactionYear,
+  getAuthHeaders,
+  inYearMonth,
+  MONTHS,
+  percentChange,
+  sumByCategory,
+} from "@/lib/finance";
+import { cn } from "@/lib/utils";
 
 const Dashboard = () => {
-  const [summary, setSummary] = useState({ balance: 0, income: 0, expenses: 0 });
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [chartView, setChartView] = useState("monthly");
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const navigate = useNavigate();
   const token = localStorage.getItem("userToken");
 
   useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/transactions`, {
+          headers: getAuthHeaders(token),
+        });
+        setTransactions(data);
+        setSelectedYear(getDefaultTransactionYear(data));
+      } catch (error) {
+        console.error("Error fetching summary data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchSummary();
-  }, []);
+  }, [token]);
 
-  const fetchSummary = async () => {
-    try {
-      const { data } = await axios.get(`${import.meta.env.VITE_API_URL}/transactions`, {
-        headers: { Authorization: token },
-      });
+  const now = new Date();
+  const currentMonth = MONTHS[now.getMonth()];
+  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const previousMonth = MONTHS[previous.getMonth()];
+  const previousYear = previous.getFullYear();
 
-      const income = data
-        .filter((tx) => tx.category === "Income")
-        .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+  const stats = useMemo(() => {
+    const currentMonthTx = transactions.filter((tx) => inYearMonth(tx, now.getFullYear(), currentMonth));
+    const previousMonthTx = transactions.filter((tx) => inYearMonth(tx, previousYear, previousMonth));
 
-      const expenses = data
-        .filter((tx) => tx.category === "Expense")
-        .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+    const monthlyIncome = sumByCategory(currentMonthTx, "Income");
+    const monthlyExpenses = sumByCategory(currentMonthTx, "Expense");
+    const prevIncome = sumByCategory(previousMonthTx, "Income");
+    const prevExpenses = sumByCategory(previousMonthTx, "Expense");
+    const totalIncome = sumByCategory(transactions, "Income");
+    const totalExpenses = sumByCategory(transactions, "Expense");
+    const balance = totalIncome - totalExpenses;
+    const prevBalance = prevIncome - prevExpenses;
+    const savingsRate = monthlyIncome > 0 ? ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100 : null;
+    const prevSavingsRate = prevIncome > 0 ? ((prevIncome - prevExpenses) / prevIncome) * 100 : null;
 
-      setSummary({
-        balance: income - expenses,
-        income,
-        expenses,
-      });
-    } catch (error) {
-      console.error("Error fetching summary data", error);
+    const expenseGroups = currentMonthTx
+      .filter((tx) => tx.category === "Expense")
+      .reduce((acc, tx) => {
+        const key = tx.description?.trim() || "Untitled";
+        acc[key] = (acc[key] || 0) + parseFloat(tx.amount || 0);
+        return acc;
+      }, {});
+
+    const topSpending = Object.entries(expenseGroups)
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+
+    const recent = [...transactions]
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+      .slice(0, 6);
+
+    return {
+      balance,
+      monthlyIncome,
+      monthlyExpenses,
+      savingsRate,
+      balanceChange: percentChange(balance, prevBalance),
+      incomeChange: percentChange(monthlyIncome, prevIncome),
+      expenseChange: percentChange(monthlyExpenses, prevExpenses),
+      savingsChange:
+        savingsRate == null || prevSavingsRate == null ? null : savingsRate - prevSavingsRate,
+      topSpending,
+      recent,
+      monthlyExpenseTotal: monthlyExpenses,
+    };
+  }, [transactions, currentMonth, previousMonth, previousYear, now]);
+
+  const openAdd = () => navigate("/transactions", { state: { openAdd: true } });
+
+  const ChangeHint = ({ value, suffix = "vs last month", invert = false }) => {
+    if (value == null) {
+      return <p className="mt-2 text-xs text-[#6F7B91]">No prior month to compare</p>;
     }
+    const positive = invert ? value < 0 : value > 0;
+    const Icon = value >= 0 ? ArrowUpRight : ArrowDownRight;
+    return (
+      <p className="mt-2 flex items-center gap-1 text-xs text-[#A7B1C5]">
+        <Icon className={cn("h-3.5 w-3.5", positive ? "text-[#00D084]" : "text-[#FF4545]")} />
+        <span className={cn("font-semibold", positive ? "text-[#00D084]" : "text-[#FF4545]")}>
+          {value > 0 ? "+" : ""}
+          {value.toFixed(1)}%
+        </span>
+        {suffix}
+      </p>
+    );
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <Skeleton className="h-16 w-full" />
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-36" />
+          ))}
+        </div>
+        <Skeleton className="h-80" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financial Overview</h1>
-          <p className="text-muted-foreground">Welcome back! Here's a snapshot of your current financial health.</p>
+          <h1 className="text-[30px] font-bold tracking-tight md:text-[34px]">Financial Overview</h1>
+          <p className="mt-1 text-[15px] text-[#A7B1C5]">
+            Welcome back! Here&apos;s a snapshot of your current financial health.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9">
-            <Filter className="mr-2 h-4 w-4" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm" className="h-9">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Button
-            size="sm"
-            className="h-9 bg-primary shadow-lg shadow-primary/20"
-            onClick={() => navigate("/transactions")}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Transaction
-          </Button>
-        </div>
+        <Button variant="primary" onClick={openAdd}>
+          <Plus className="h-4 w-4" />
+          New Transaction
+        </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="relative overflow-hidden border-none bg-primary text-primary-foreground shadow-2xl shadow-primary/20">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium opacity-80">Total Balance</CardTitle>
-            <Wallet className="h-4 w-4 opacity-80" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">${summary.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-            <p className="mt-1 text-xs opacity-70">
-              <span className="font-bold">+2.5%</span> from last month
-            </p>
-          </CardContent>
-          {/* Subtle background pattern */}
-          <div className="absolute -bottom-6 -right-6 h-32 w-32 rounded-full bg-white/5 blur-3xl" />
-        </Card>
-
-        <Card className="border-none bg-card shadow-md transition-all hover:shadow-xl dark:border dark:border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Income</CardTitle>
-            <div className="rounded-full bg-green-500/10 p-2 text-green-500 dark:bg-green-500/20">
-              <TrendingUp className="h-4 w-4" />
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          {
+            label: "Total Balance",
+            value: formatMoney(stats.balance),
+            icon: Wallet,
+            tone: "text-[#16D9FF]",
+            bg: "bg-[#1677FF]/10",
+            change: <ChangeHint value={stats.balanceChange} />,
+          },
+          {
+            label: "Monthly Income",
+            value: formatSignedMoney(stats.monthlyIncome, "Income"),
+            icon: TrendingUp,
+            tone: "text-[#00D084]",
+            bg: "bg-[#00D084]/10",
+            change: <ChangeHint value={stats.incomeChange} />,
+          },
+          {
+            label: "Monthly Expenses",
+            value: formatSignedMoney(stats.monthlyExpenses, "Expense"),
+            icon: TrendingDown,
+            tone: "text-[#FF4545]",
+            bg: "bg-[#FF4545]/10",
+            change: <ChangeHint value={stats.expenseChange} invert />,
+          },
+          {
+            label: "Savings Rate",
+            value: stats.savingsRate == null ? "—" : `${stats.savingsRate.toFixed(1)}%`,
+            icon: PiggyBank,
+            tone: "text-[#c4b5ff]",
+            bg: "bg-[#6C4DFF]/10",
+            change:
+              stats.savingsRate == null ? (
+                <p className="mt-2 text-xs text-[#6F7B91]">Add income this month to calculate</p>
+              ) : (
+                <ChangeHint value={stats.savingsChange} suffix="pts vs last month" />
+              ),
+          },
+        ].map((card) => (
+          <Card key={card.label} hover className="p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm font-medium text-[#A7B1C5]">{card.label}</p>
+              <div className={cn("rounded-xl p-2.5", card.bg, card.tone)}>
+                <card.icon className="h-5 w-5" />
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600 dark:text-green-500">
-              +${summary.income.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            <div className={cn("text-[30px] font-bold tracking-tight md:text-[32px]", card.tone)}>
+              {card.value}
             </div>
-            <p className="mt-1 flex items-center text-xs text-muted-foreground">
-              <ArrowUpRight className="mr-1 h-3 w-3 text-green-500" />
-              <span className="font-medium text-green-500">+12%</span> vs last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none bg-card shadow-md transition-all hover:shadow-xl dark:border dark:border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Expenses</CardTitle>
-            <div className="rounded-full bg-destructive/10 p-2 text-destructive dark:bg-destructive/20">
-              <TrendingDown className="h-4 w-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-destructive">
-              -${summary.expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </div>
-            <p className="mt-1 flex items-center text-xs text-muted-foreground">
-              <ArrowDownRight className="mr-1 h-3 w-3 text-destructive" />
-              <span className="font-medium text-destructive">-4%</span> vs last month
-            </p>
-          </CardContent>
-        </Card>
+            {card.change}
+          </Card>
+        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* Main Section: Chart & Activity */}
         <div className="space-y-6 lg:col-span-8">
-          <Card className="border-none shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>Cash Flow Analytics</CardTitle>
-                <CardDescription>Visualize your income and expenditure patterns.</CardDescription>
+                <CardDescription>Income and expenses from your actual transactions.</CardDescription>
               </div>
-              <Tabs defaultValue="week" className="w-[200px]">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="week">Weekly</TabsTrigger>
-                  <TabsTrigger value="month">Monthly</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex rounded-xl border border-white/10 bg-[var(--bg-input)] p-1">
+                {["weekly", "monthly"].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setChartView(value)}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                      chartView === value ? "bg-[#17243A] text-white" : "text-[#A7B1C5] hover:text-white"
+                    )}
+                  >
+                    {value === "weekly" ? "Weekly" : "Monthly"}
+                  </button>
+                ))}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="h-[350px] w-full pt-4">
-                <TransactionGraph />
-              </div>
+              {transactions.length === 0 ? (
+                <EmptyState
+                  icon={TrendingUp}
+                  title="No cash flow yet"
+                  description="Add your first transaction to see income and expense trends."
+                  actionLabel="+ Add Transaction"
+                  onAction={openAdd}
+                />
+              ) : (
+                <TransactionGraph
+                  transactions={transactions}
+                  view={chartView}
+                  chartType="area"
+                  selectedYear={selectedYear}
+                  onYearChange={setSelectedYear}
+                  height={320}
+                />
+              )}
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-md">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>A detailed list of your latest transactions.</CardDescription>
+                <CardTitle>Recent Transactions</CardTitle>
+                <CardDescription>Latest activity from your account.</CardDescription>
               </div>
-              <Button variant="link" className="text-primary hover:no-underline">View All</Button>
+              <Button variant="ghost" className="text-[#16D9FF]" onClick={() => navigate("/transactions")}>
+                View All →
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="overflow-hidden rounded-md border bg-muted/20">
-                <TransactionTable hideAddForm={true} onTransactionChange={fetchSummary} />
-              </div>
+              {stats.recent.length === 0 ? (
+                <EmptyState
+                  icon={Wallet}
+                  title="No transactions yet"
+                  description="Start tracking your financial activity by adding your first transaction."
+                  actionLabel="+ Add Transaction"
+                  onAction={openAdd}
+                />
+              ) : (
+                <div className="divide-y divide-white/10 overflow-hidden rounded-xl border border-white/10">
+                  {stats.recent.map((tx) => (
+                    <div key={tx._id} className="flex items-center justify-between px-4 py-3.5">
+                      <div>
+                        <p className="font-medium text-white">{tx.description}</p>
+                        <p className="text-xs text-[#6F7B91]">
+                          {formatShortDate(tx.date)} · {tx.category}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "text-sm font-bold",
+                          tx.category === "Income" ? "text-[#00D084]" : "text-[#FF4545]"
+                        )}
+                      >
+                        {formatSignedMoney(tx.amount, tx.category)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar Section: Categorization or Goals */}
         <div className="space-y-6 lg:col-span-4">
-          <Card className="border-none shadow-md">
+          <Card>
             <CardHeader>
-              <CardTitle>Top Categories</CardTitle>
-              <CardDescription>Spending breakdown by category.</CardDescription>
+              <CardTitle>Top Spending</CardTitle>
+              <CardDescription>Largest expense descriptions this month.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { name: "Food & Dining", amount: summary.expenses * 0.4, color: "bg-orange-500" },
-                { name: "Transport", amount: summary.expenses * 0.2, color: "bg-blue-500" },
-                { name: "Entertainment", amount: summary.expenses * 0.3, color: "bg-purple-500" },
-                { name: "Others", amount: summary.expenses * 0.1, color: "bg-gray-500" },
-              ].map((cat) => (
-                <div key={cat.name} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{cat.name}</span>
-                    <span className="text-muted-foreground">${cat.amount.toFixed(0)}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${cat.color}`}
-                      style={{ width: summary.expenses > 0 ? `${(cat.amount / summary.expenses) * 100}%` : "0%" }}
-                    />
-                  </div>
-                </div>
-              ))}
+              {stats.topSpending.length === 0 ? (
+                <p className="text-sm text-[#6F7B91]">No expenses recorded this month.</p>
+              ) : (
+                stats.topSpending.map((item) => {
+                  const pct =
+                    stats.monthlyExpenseTotal > 0
+                      ? (item.amount / stats.monthlyExpenseTotal) * 100
+                      : 0;
+                  return (
+                    <div key={item.name} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-white">{item.name}</span>
+                        <span className="text-[#A7B1C5]">{pct.toFixed(0)}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#1677FF] to-[#16D9FF]"
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
 
-          <Card className="border-none bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-xl shadow-indigo-500/20">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-white">Savings Goal</CardTitle>
-              <CardDescription className="text-indigo-100">Vacation to Bali</CardDescription>
+              <CardTitle>This Month Split</CardTitle>
+              <CardDescription>Income vs expenses for {currentMonth}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-2xl font-bold">$1,250.00 / $3,000.00</div>
-              <div className="h-3 w-full rounded-full bg-white/20">
-                <div className="h-full w-[42%] rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-              </div>
-              <p className="text-sm text-indigo-100 opacity-80">
-                You're on track! Only $1,750 more to go.
-              </p>
+              {[
+                { name: "Income", amount: stats.monthlyIncome, variant: "income" },
+                { name: "Expense", amount: stats.monthlyExpenses, variant: "expense" },
+              ].map((item) => {
+                const total = stats.monthlyIncome + stats.monthlyExpenses;
+                const pct = total > 0 ? (item.amount / total) * 100 : 0;
+                return (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <Badge variant={item.variant}>{item.name}</Badge>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">{formatMoney(item.amount)}</p>
+                      <p className="text-xs text-[#6F7B91]">{pct.toFixed(0)}%</p>
+                    </div>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>

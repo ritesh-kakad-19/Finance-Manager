@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import FinanceNavbar from "./FinanceNavbar";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "./theme/ThemeProvider";
 
 const DashboardLayout = ({ children }) => {
   const [loggingOut, setLoggingOut] = useState(false);
-  const [darkMode, setDarkMode] = useState(localStorage.getItem("darkMode") === "true");
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { darkMode, setDarkMode } = useTheme();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,43 +17,34 @@ const DashboardLayout = ({ children }) => {
     }
   }, [navigate]);
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.add("dark-mode");
-      document.documentElement.setAttribute("data-bs-theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.remove("dark-mode");
-      document.documentElement.setAttribute("data-bs-theme", "light");
-    }
-    localStorage.setItem("darkMode", darkMode);
-  }, [darkMode]);
-
   const handleLogout = () => {
     setLoggingOut(true);
     setTimeout(() => {
       localStorage.removeItem("userToken");
       sessionStorage.clear();
       navigate("/login");
-    }, 1500);
+    }, 900);
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Sidebar handleLogout={handleLogout} loggingOut={loggingOut} />
-      
-      <div className="flex flex-col transition-all duration-300 md:pl-64">
+    <div className="app-atmosphere min-h-screen text-[var(--text-primary)]">
+      <Sidebar
+        handleLogout={handleLogout}
+        loggingOut={loggingOut}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
+      />
+
+      <div className="flex min-h-screen flex-col transition-all duration-300 md:pl-[260px]">
         <FinanceNavbar
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           loggingOut={loggingOut}
           handleLogout={handleLogout}
+          setMobileOpen={setMobileOpen}
         />
-        <main className="flex-1 px-4 py-8 md:px-8">
-          <div className="mx-auto max-w-7xl">
-            {children}
-          </div>
+        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+          <div className="page-enter mx-auto max-w-7xl">{children}</div>
         </main>
       </div>
     </div>

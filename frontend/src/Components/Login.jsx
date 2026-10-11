@@ -1,13 +1,14 @@
-import { useState } from 'react';
-import axios from 'axios';
-import { Container, Form, Button, Alert, Spinner, InputGroup } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaArrowLeft } from 'react-icons/fa';
-import '../styles/LandingPage.css';
+import { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Logo from "./brand/Logo";
 
 const Login = () => {
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [message, setMessage] = useState('');
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -22,71 +23,84 @@ const Login = () => {
     try {
       const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/users/login`, formData);
       localStorage.setItem("userToken", data.token);
-      
-      // Simulate a small delay after successful login before navigating
-      setTimeout(() => {
-        navigate('/home');
-      }, 1500);
+      navigate("/dashboard");
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Invalid Credentials');
+      setMessage(error.response?.data?.message || "Invalid Credentials");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="landing-container" data-bs-theme="dark">
-      <div className="landing-overlay"></div>
-      <Container className="landing-content d-flex justify-content-center align-items-center min-vh-100">
-        <div style={{ maxWidth: '450px', width: '100%', position: 'relative' }} className="glass-card p-5">
-          <Button variant="link" onClick={() => navigate('/')} style={{ position: 'absolute', top: '20px', left: '20px', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', padding: 0 }}>
-            <FaArrowLeft size={18} />
-          </Button>
-          <h2 className="text-center mb-4 hero-logo">Login</h2>
-          {message && <div className="glass-alert glass-alert-danger">{message}</div>}
-          
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mb-4">
-              <Form.Label>Email</Form.Label>
-              <Form.Control type="email" name="email" placeholder="Enter email" onChange={handleChange} required className="glass-input" />
-            </Form.Group>
-            
-            <Form.Group className="mb-4">
-              <Form.Label>Password</Form.Label>
-              <InputGroup>
-                <Form.Control type={showPassword ? "text" : "password"} name="password" placeholder="Enter password" onChange={handleChange} required className="glass-input border-end-0" />
-                <Button variant="outline-secondary" className="glass-input text-white px-3" style={{ borderLeftColor: 'transparent' }} onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <FaEyeSlash /> : <FaEye />}
-                </Button>
-              </InputGroup>
-              <div className="text-end mt-2">
-                <a href="/forgot-password" onClick={(e) => { e.preventDefault(); navigate('/forgot-password'); }} className="text-primary text-decoration-none" style={{ fontSize: '0.9rem' }}>Forgot password?</a>
-              </div>
-            </Form.Group>
-            
-            <Button variant="primary" type="submit" className="w-100 btn-glow py-2 mt-2" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Spinner
-                    as="span"
-                    animation="border"
-                    size="sm"
-                    role="status"
-                    aria-hidden="true"
-                    className="me-2"
-                  />
-                  Signing In...
-                </>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-          </Form>
+    <div className="app-atmosphere flex min-h-screen items-center justify-center p-4">
+      <div className="page-enter w-full max-w-md space-y-6">
+        <button
+          onClick={() => navigate("/")}
+          className="inline-flex items-center gap-2 text-sm text-[#A7B1C5] hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Home
+        </button>
 
-          <p className="text-center mt-4 text-muted border-top border-secondary pt-4">
-            New user? <a href="/signup" className="text-primary fw-bold text-decoration-none" onClick={(e) => { e.preventDefault(); navigate('/signup'); }}>Sign Up</a>
+        <div className="glass-card p-8">
+          <div className="mb-6 text-center">
+            <div className="mb-4 flex justify-center">
+              <Logo showWordmark={false} size="lg" />
+            </div>
+            <h2 className="text-2xl font-bold">Welcome back</h2>
+            <p className="mt-1 text-sm text-[#A7B1C5]">Sign in to Financely</p>
+          </div>
+
+          {message ? (
+            <div className="mb-4 rounded-xl border border-[#FF4545]/30 bg-[#FF4545]/10 p-3 text-sm text-[#FF4545]">
+              {message}
+            </div>
+          ) : null}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm text-[#A7B1C5]">Email</label>
+              <Input type="email" name="email" placeholder="Email" onChange={handleChange} required />
+            </div>
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className="text-sm text-[#A7B1C5]">Password</label>
+                <button type="button" onClick={() => navigate("/forgot-password")} className="text-xs text-[#16D9FF]">
+                  Forgot password?
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Password"
+                  onChange={handleChange}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-[#6F7B91]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <Button variant="primary" type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Sign In
+            </Button>
+          </form>
+
+          <p className="mt-6 border-t border-white/10 pt-6 text-center text-sm text-[#A7B1C5]">
+            Don&apos;t have an account?{" "}
+            <button onClick={() => navigate("/signup")} className="font-semibold text-[#16D9FF]">
+              Sign Up
+            </button>
           </p>
         </div>
-      </Container>
+      </div>
     </div>
   );
 };
